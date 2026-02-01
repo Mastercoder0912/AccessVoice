@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      height: 100vh;
+      overflow: hidden; /* prevent scrollbars */
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 15vh;
+    }
+
+    #textBar {
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px 20px;
+      font-size: 24px;
+      font-family: Arial, sans-serif;
+      border-radius: 5px;
+      display: inline-block;
+      max-width: 760px;
+      word-wrap: break-word;
+      overflow: hidden; /* hide internal scroll */
+    }
+  </style>
+</head>
+<body>
+  <div id="textBar"></div>
+  <script>
+    const textBar = document.getElementById('textBar');
+    
+    // Listen for transcription updates from main process
+    const { ipcRenderer } = require('electron');
+    
+    ipcRenderer.on('update-text', (event, text) => {
+      textBar.textContent = text;
+      
+      // Auto-resize window to fit text
+      const height = textBar.offsetHeight + 20;
+      ipcRenderer.send('resize-textbar', height);
+    });
+  </script>
+</body>
+</html>

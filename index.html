@@ -1,0 +1,164 @@
+<!--this is a simple HTML file for the text to speech assistant-->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Voice controller</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px;
+            }
+
+            .container {
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                padding: 40px;
+                width: 100%;
+                max-width: 500px;
+            }
+
+            h1 {
+                color: #333;
+                margin-bottom: 30px;
+                text-align: center;
+                font-size: 28px;
+            }
+
+            .form-group {
+                margin-bottom: 20px;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 8px;
+                color: #555;
+                font-weight: 600;
+                font-size: 14px;
+            }
+
+            .slider-group {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .slider-group input[type="range"] {
+                flex: 1;
+                padding: 0;
+                height: 6px;
+            }
+
+            .slider-value {
+                color: #667eea;
+                font-weight: 600;
+                min-width: 40px;
+            }
+
+            .button-group {
+                display: flex;
+                gap: 10px;
+                margin-top: 30px;
+            }
+
+            button {
+                flex: 1;
+                padding: 14px 20px;
+                font-size: 16px;
+                font-weight: 600;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+
+            #speak-button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            #speak-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+            }
+
+            #speak-button:active {
+                transform: translateY(0);
+            }
+
+            #stop-button {
+                background: #ff6b6b;
+                color: white;
+            }
+
+            #stop-button:hover {
+                background: #ee5a52;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+            }
+
+            #stop-button:active {
+                transform: translateY(0);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔊 Voice Controller</h1>
+
+
+            <div class="form-group">
+                <label for="voice-select">Voice</label>
+                <select id="voice-select"></select>
+            </div>
+
+            <div class="form-group">
+                <label>Speed</label>
+                <div class="slider-group">
+                    <input type="range" id="rate-input" min="0.5" max="2" step="0.1" value="1">
+                    <span class="slider-value" id="rate-value">1x</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Pitch</label>
+                <div class="slider-group">
+                    <input type="range" id="pitch-input" min="0.5" max="2" step="0.1" value="1">
+                    <span class="slider-value" id="pitch-value">1x</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="speak-button">Text to Speech Mode</button>
+                <button id="audio-to-text">Audio to Text Mode</button>
+            </div>
+        </div>
+
+        <script src="render.js"></script>
+        <script>
+            // Update slider value displays
+            document.getElementById('rate-input').addEventListener('input', (e) => {
+                document.getElementById('rate-value').textContent = e.target.value + 'x';
+            });
+
+            document.getElementById('pitch-input').addEventListener('input', (e) => {
+                document.getElementById('pitch-value').textContent = e.target.value + 'x';
+            });
+        </script>
+    </body>
+</html>
