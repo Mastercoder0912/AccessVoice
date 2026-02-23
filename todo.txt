@@ -1,3 +1,5 @@
+#fix the gatewap app so that it has dynamic sizing and can be resized by the user.
+#hook the gateway app up to the voice assistant so that the user can change settings for the voice assistant and transcription in the gateway app
 make the voice assistant loop work with the transcription and with the text to speech
 add google gemini api so that the voice assistant can use it for better responses
 make the voice assistant work in real time with audio input and output

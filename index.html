@@ -1,164 +1,401 @@
-<!--this is a simple HTML file for the text to speech assistant-->
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Voice controller</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+  <head>
+    <title>Large Flamboyant Hornet</title>
+    <meta property="og:title" content="Large Flamboyant Hornet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8" />
+    <meta property="twitter:card" content="summary_large_image" />
 
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    <style data-tag="reset-style-sheet">
+      html {  line-height: 1.15;}body {  margin: 0;}* {  box-sizing: border-box;  border-width: 0;  border-style: solid;  -webkit-font-smoothing: antialiased;}p,li,ul,pre,div,h1,h2,h3,h4,h5,h6,figure,blockquote,figcaption {  margin: 0;  padding: 0;}button {  background-color: transparent;}button,input,optgroup,select,textarea {  font-family: inherit;  font-size: 100%;  line-height: 1.15;  margin: 0;}button,select {  text-transform: none;}button,[type="button"],[type="reset"],[type="submit"] {  -webkit-appearance: button;  color: inherit;}button::-moz-focus-inner,[type="button"]::-moz-focus-inner,[type="reset"]::-moz-focus-inner,[type="submit"]::-moz-focus-inner {  border-style: none;  padding: 0;}button:-moz-focus,[type="button"]:-moz-focus,[type="reset"]:-moz-focus,[type="submit"]:-moz-focus {  outline: 1px dotted ButtonText;}a {  color: inherit;  text-decoration: inherit;}pre {  white-space: normal;}input {  padding: 2px 4px;}img {  display: block;}details {  display: block;  margin: 0;  padding: 0;}summary::-webkit-details-marker {  display: none;}[data-thq="accordion"] [data-thq="accordion-content"] {  max-height: 0;  overflow: hidden;  transition: max-height 0.3s ease-in-out;  padding: 0;}[data-thq="accordion"] details[data-thq="accordion-trigger"][open] + [data-thq="accordion-content"] {  max-height: 1000vh;}details[data-thq="accordion-trigger"][open] summary [data-thq="accordion-icon"] {  transform: rotate(180deg);}html { scroll-behavior: smooth  }
+    </style>
+    <style data-tag="default-style-sheet">
+      html {
+        font-family: Inter;
+        font-size: 16px;
+      }
+
+      body {
+        font-weight: 400;
+        font-style:normal;
+        text-decoration: none;
+        text-transform: none;
+        letter-spacing: normal;
+        line-height: 1.15;
+        color: var(--dl-color-theme-neutral-dark);
+        background: var(--dl-color-theme-neutral-light);
+
+        fill: var(--dl-color-theme-neutral-dark);
+      }
+    </style>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/animate.css@4.1.1/animate.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;display=swap"
+      data-tag="font"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&amp;display=swap"
+      data-tag="font"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;display=swap"
+      data-tag="font"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@teleporthq/teleport-custom-scripts/dist/style.css"
+    />
+  </head>
+  <body>
+    <link rel="stylesheet" href="./style.css" />
+    <div>
+      <link href="./index.css" rel="stylesheet" />
+
+      <div class="home-container1">
+        <div class="home-container2">
+          <div class="home-container3">
+            <style>
+              #app-root {
+                font-family: "Inter", sans-serif;
+                background: var(--bg-dark);
+                color: var(--text-main);
+                min-height: 100vh;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                min-height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 20px;
-            }
-
-            .container {
-                background: white;
-                border-radius: 15px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                padding: 40px;
-                width: 100%;
-                max-width: 500px;
-            }
-
-            h1 {
-                color: #333;
-                margin-bottom: 30px;
-                text-align: center;
-                font-size: 28px;
-            }
-
-            .form-group {
-                margin-bottom: 20px;
-            }
-
-            label {
-                display: block;
-                margin-bottom: 8px;
-                color: #555;
-                font-weight: 600;
-                font-size: 14px;
-            }
-
-            .slider-group {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 15px;
-            }
-
-            .slider-group input[type="range"] {
-                flex: 1;
-                padding: 0;
-                height: 6px;
-            }
-
-            .slider-value {
-                color: #667eea;
-                font-weight: 600;
-                min-width: 40px;
-            }
-
-            .button-group {
-                display: flex;
-                gap: 10px;
-                margin-top: 30px;
-            }
-
-            button {
-                flex: 1;
-                padding: 14px 20px;
-                font-size: 16px;
-                font-weight: 600;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-
-            #speak-button {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            #speak-button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-            }
-
-            #speak-button:active {
-                transform: translateY(0);
-            }
-
-            #stop-button {
-                background: #ff6b6b;
-                color: white;
-            }
-
-            #stop-button:hover {
-                background: #ee5a52;
-                transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
-            }
-
-            #stop-button:active {
-                transform: translateY(0);
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔊 Voice Controller</h1>
-
-
-            <div class="form-group">
-                <label for="voice-select">Voice</label>
-                <select id="voice-select"></select>
-            </div>
-
-            <div class="form-group">
-                <label>Speed</label>
-                <div class="slider-group">
-                    <input type="range" id="rate-input" min="0.5" max="2" step="0.1" value="1">
-                    <span class="slider-value" id="rate-value">1x</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Pitch</label>
-                <div class="slider-group">
-                    <input type="range" id="pitch-input" min="0.5" max="2" step="0.1" value="1">
-                    <span class="slider-value" id="pitch-value">1x</span>
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button id="speak-button">Text to Speech Mode</button>
-                <button id="audio-to-text">Audio to Text Mode</button>
-            </div>
+                overflow: hidden;
+                position: relative;
+              }
+            </style>
+          </div>
         </div>
+        <section class="gateway-container">
+          <div class="gateway-bg">
+            <img
+              src="https://images.pexels.com/photos/7135050/pexels-photo-7135050.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1500"
+              alt="Calming Gradient Background"
+              class="bg-image"
+            />
+            <div class="bg-overlay"></div>
+          </div>
+          <div class="gateway-content">
+            <header class="gateway-header">
+              <h1 class="main-title">Hello! How can I help today?</h1>
+              <p class="sub-title">Choose how you want to talk with your AI</p>
+            </header>
+            <main class="gateway-card">
+              <div class="mode-selector">
+                <button
+                  id="btn-talk"
+                  aria-pressed="true"
+                  class="home-mode-btn active"
+                >
+                  <div class="icon-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298zM16 9a5 5 0 0 1 0 6m3.364 3.364a9 9 0 0 0 0-12.728"
+                      ></path>
+                    </svg>
+                  </div>
+                  <span>Talk to Me</span>
+                </button>
+                <button
+                  id="btn-listen"
+                  aria-pressed="false"
+                  class="home-mode-btn"
+                >
+                  <div class="icon-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="48"
+                      height="48"
+                      viewBox="0 0 24 24"
+                    >
+                      <g
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                      >
+                        <path d="M12 19v3m7-12v2a7 7 0 0 1-14 0v-2"></path>
+                        <rect width="6" height="13" x="9" y="2" rx="3"></rect>
+                      </g>
+                    </svg>
+                  </div>
+                  <span>Listen to Me</span>
+                </button>
+              </div>
+              <div class="settings-grid">
+                <div class="setting-group full-width">
+                  <label for="voice-select" class="group-label">
+                    Choose a Voice
+                  </label>
+                  <div class="select-wrapper">
+                    <select id="voice-select" class="large-select">
+                      <option value="jarvis">
+                        J.A.R.V.I.S. (Calm &amp; Helpful)
+                      </option>
+                      <option value="friday">
+                        F.R.I.D.A.Y. (Quick &amp; Bright)
+                      </option>
+                      <option value="edith">
+                        E.D.I.T.H. (Clear &amp; Direct)
+                      </option>
+                      <option value="homer">
+                        H.O.M.E.R. (Friendly &amp; Warm)
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-group">
+                  <label class="group-label">Speaking Speed</label>
+                  <div class="slider-container">
+                    <div class="slider-icon">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                      >
+                        <g
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                        >
+                          <path
+                            d="M12 10l2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a8 8 0 1 0-16 0v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3l2-4zM4.82 7.9L8 10m7.18-2.1L12 10"
+                          ></path>
+                          <path d="M16.93 10H20a2 2 0 0 1 0 4H2"></path>
+                        </g>
+                      </svg>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value="50"
+                      id="speed-slider"
+                      class="large-slider"
+                    />
+                    <div class="slider-icon">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                      >
+                        <g
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                        >
+                          <path d="M13 16a3 3 0 0 1 2.24 5M18 12h.01"></path>
+                          <path
+                            d="M18 21h-8a4 4 0 0 1-4-4a7 7 0 0 1 7-7h.2L9.6 6.4a1 1 0 1 1 2.8-2.8L15.8 7h.2c3.3 0 6 2.7 6 6v1a2 2 0 0 1-2 2h-1a3 3 0 0 0-3 3"
+                          ></path>
+                          <path
+                            d="M20 8.54V4a2 2 0 1 0-4 0v3m-8.388 5.524a3 3 0 1 0-1.6 4.3"
+                          ></path>
+                        </g>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="setting-group">
+                  <label class="group-label">Voice Pitch</label>
+                  <div class="slider-container">
+                    <span class="pitch-label low">Low</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      value="50"
+                      id="pitch-slider"
+                      class="large-slider"
+                    />
+                    <span class="pitch-label high">High</span>
+                  </div>
+                </div>
+                <div class="setting-group">
+                  <label class="group-label">App Color</label>
+                  <div class="color-picker">
+                    <button
+                      data-color="#4a90e2"
+                      class="home-thq-color-dot-elm1 home-color-dot active"
+                    ></button>
+                    <button
+                      data-color="#50c878"
+                      class="home-thq-color-dot-elm2 home-color-dot"
+                    ></button>
+                    <button
+                      data-color="#ff7f50"
+                      class="home-thq-color-dot-elm3 home-color-dot"
+                    ></button>
+                    <button
+                      data-color="#9b59b6"
+                      class="home-thq-color-dot-elm4 home-color-dot"
+                    ></button>
+                  </div>
+                </div>
+                <div class="setting-group">
+                  <label class="group-label">Personality File</label>
+                  <div id="drop-zone" class="upload-box">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                    >
+                      <g
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M12 13v8m-8-6.101A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"
+                        ></path>
+                        <path d="m8 17l4-4l4 4"></path>
+                      </g>
+                    </svg>
+                    <p>Drop file here</p>
+                  </div>
+                </div>
+              </div>
+            </main>
+            <footer class="gateway-footer">
+              <button class="start-btn">Start Talking Now</button>
+            </footer>
+          </div>
+        </section>
+        <div class="home-container4">
+          <div class="home-container5">
+            <style>
+                      @keyframes fadeIn {from {opacity: 0;
+              transform: translateY(20px);}
+              to {opacity: 1;
+              transform: translateY(0);}}
+            </style>
+          </div>
+        </div>
+        <div class="home-container6">
+          <div class="home-container7">
+            <script defer="" data-name="gateway-section">
+              document.addEventListener('DOMContentLoaded', function() {
+                (function(){
+                  // Mode Toggle Functionality
+                  const btnTalk = document.getElementById("btn-talk")
+                  const btnListen = document.getElementById("btn-listen")
 
-        <script src="render.js"></script>
-        <script>
-            // Update slider value displays
-            document.getElementById('rate-input').addEventListener('input', (e) => {
-                document.getElementById('rate-value').textContent = e.target.value + 'x';
-            });
+                  function setActiveMode(activeBtn, inactiveBtn) {
+                    activeBtn.classList.add("active")
+                    activeBtn.setAttribute("aria-pressed", "true")
+                    inactiveBtn.classList.remove("active")
+                    inactiveBtn.setAttribute("aria-pressed", "false")
+                  }
 
-            document.getElementById('pitch-input').addEventListener('input', (e) => {
-                document.getElementById('pitch-value').textContent = e.target.value + 'x';
-            });
-        </script>
-    </body>
+                  btnTalk.addEventListener("click", () => setActiveMode(btnTalk, btnListen))
+                  btnListen.addEventListener("click", () => setActiveMode(btnListen, btnTalk))
+
+                  // Theme Color Picker Functionality
+                  const colorDots = document.querySelectorAll(".color-dot")
+                  const startBtn = document.querySelector(".start-btn")
+
+                  colorDots.forEach((dot) => {
+                    dot.addEventListener("click", () => {
+                      // Remove active class from all dots
+                      colorDots.forEach((d) => d.classList.remove("active"))
+                      // Add to clicked dot
+                      dot.classList.add("active")
+
+                      // Update accent color variable
+                      const selectedColor = dot.getAttribute("data-color")
+                      document.documentElement.style.setProperty("--accent-color", selectedColor)
+                    })
+                  })
+
+                  // Drag and Drop Visual Feedback
+                  const dropZone = document.getElementById("drop-zone")
+
+                  dropZone.addEventListener("dragover", (e) => {
+                    e.preventDefault()
+                    dropZone.style.borderColor = "var(--accent-color)"
+                    dropZone.style.background = "#f0f7ff"
+                  })
+
+                  dropZone.addEventListener("dragleave", () => {
+                    dropZone.style.borderColor = "#e1e8ed"
+                    dropZone.style.background = "white"
+                  })
+
+                  dropZone.addEventListener("drop", (e) => {
+                    e.preventDefault()
+                    dropZone.style.borderColor = "#50c878"
+                    dropZone.querySelector("p").textContent = "File Received!"
+                    setTimeout(() => {
+                      dropZone.style.borderColor = "#e1e8ed"
+                      dropZone.querySelector("p").textContent = "Drop file here"
+                    }, 3000)
+                  })
+                })()
+              });
+            </script>
+          </div>
+        </div>
+        <a href="https://play.teleporthq.io/signup" class="home-link">
+          <div aria-label="Sign up to TeleportHQ" class="home-container8">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 19 21"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="home-icon29"
+            >
+              <path
+                d="M9.1017 4.64355H2.17867C0.711684 4.64355 -0.477539 5.79975 -0.477539 7.22599V13.9567C-0.477539 15.3829 0.711684 16.5391 2.17867 16.5391H9.1017C10.5687 16.5391 11.7579 15.3829 11.7579 13.9567V7.22599C11.7579 5.79975 10.5687 4.64355 9.1017 4.64355Z"
+                fill="#B23ADE"
+              ></path>
+              <path
+                d="M10.9733 12.7878C14.4208 12.7878 17.2156 10.0706 17.2156 6.71886C17.2156 3.3671 14.4208 0.649963 10.9733 0.649963C7.52573 0.649963 4.73096 3.3671 4.73096 6.71886C4.73096 10.0706 7.52573 12.7878 10.9733 12.7878Z"
+                fill="#FF5C5C"
+              ></path>
+              <path
+                d="M17.7373 13.3654C19.1497 14.1588 19.1497 15.4634 17.7373 16.2493L10.0865 20.5387C8.67402 21.332 7.51855 20.6836 7.51855 19.0968V10.5141C7.51855 8.92916 8.67402 8.2807 10.0865 9.07221L17.7373 13.3654Z"
+                fill="#2874DE"
+              ></path>
+            </svg>
+            <span class="home-text4">Built in TeleportHQ</span>
+          </div>
+        </a>
+      </div>
+      <link
+        rel="canonical"
+        href="https://large-flamboyant-hornet-q20rcr.teleporthq.app/"
+      />
+    </div>
+  </body>
 </html>

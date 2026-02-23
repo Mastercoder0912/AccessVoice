@@ -15,6 +15,11 @@
     "electron": "^40.1.0"
   },
   "dependencies": {
-    "whisper-web-transcriber": "^0.2.5"
+    "whisper-web-transcriber": "^0.2.5",
+    "parcel-bundler": "^1.6.1",
+    "@teleporthq/react-components": "latest",
+    "next": "^12.1.10",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
   }
 }
