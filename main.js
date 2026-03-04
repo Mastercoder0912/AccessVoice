@@ -64,3 +64,7 @@ ipcMain.on('update-text', (event, text) => {
 ipcMain.on('resize-textbar', (event, height) => {
   textBar.setSize(800, Math.min(height, 200)); // Max height 200
 });
+
+ipcMain.handle('ask-gemini', async (event, prompt) => {
+  return "Gemini placeholder response: " + prompt;
+});
