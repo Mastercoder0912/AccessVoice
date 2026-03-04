@@ -1,13 +1,16 @@
-#fix the gatewap app so that it has dynamic sizing and can be resized by the user.
-#hook the gateway app up to the voice assistant so that the user can change settings for the voice assistant and transcription in the gateway app
-make the voice assistant loop work with the transcription and with the text to speech
-add google gemini api so that the voice assistant can use it for better responses
-make the voice assistant work in real time with audio input and output
-make the voice assistant able to interact with the computer system and applications
-add error handling for audio input and output issues
-make the transcription more accurate by using noise reduction techniques
-turn the transriptied audio that is in the console and display it on screen in a text box
-make a better gateway app so that the user can change things like the voice assistant settings and transcription settings
-add a settings menu for the voice assistant and transcription
-add a way for the user to choose which voice to use for text to speech
-add a way for the user to add their own ai model for the voice assistant, like chatgpt, gemini, claude, or others via their api keys
+#TODO: verify gateway window is fully resizable and UI scales dynamically
+#TODO: connect gateway UI controls (voice, rate, pitch, mode) to renderer.js logic
+#TODO: wire gateway buttons to start/stop transcription and TTS modes
+#TODO: implement assistantState loop (idle → listening → thinking → speaking → listening)
+#TODO: integrate Gemini API through main.js using IPC (replace placeholder)
+#TODO: route transcription results into textbar.html reliably (no console-only output)
+#TODO: ensure preload.js exposes correct IPC functions for update-text and ask-gemini
+#TODO: add error handling for speech recognition, speech synthesis, and getUserMedia
+#TODO: add noise reduction settings to audio input (echoCancellation, noiseSuppression, autoGainControl)
+#TODO: improve transcription accuracy by stabilizing Whisper init and merging logic
+#TODO: build settings menu for voice assistant and transcription options
+#TODO: allow user to choose TTS voice from voice-select dropdown
+#TODO: allow user to adjust rate and pitch sliders and apply them to speakText()
+#TODO: allow user to add their own AI model API keys (ChatGPT, Gemini, Claude, etc.)
+#TODO: add system interaction layer (robotjs or similar) with safe IPC whitelist
+#TODO: refine gateway UI layout and responsiveness for accessibility
