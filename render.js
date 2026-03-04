@@ -2,6 +2,8 @@
 let voices = [];
 let mode = 'text-to-speech';
 let transcriber = null;
+let assistantState = "idle"; 
+// idle | listening | thinking | speaking
 
 // Intercept console.log to forward any "Transcribed:" messages to the textBar
 (() => {
