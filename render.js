@@ -218,3 +218,7 @@ class EnsembleTranscriber {
   }
 }
 
+window.electronAPI.askGemini("Hello").then(response => {
+  console.log(response);
+});
+
