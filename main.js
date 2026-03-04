@@ -6,14 +6,18 @@ let textBar;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 700,
+    minWidth: 600,
+    minHeight: 500,
+    resizable: true,
     webPreferences: {
-      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      nodeIntegration: false
     }
   });
+
 
   mainWindow.loadFile('index.html');
   mainWindow.webContents.openDevTools();
