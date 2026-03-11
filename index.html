@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Large Flamboyant Hornet</title>
-    <meta property="og:title" content="Large Flamboyant Hornet" />
+    <title>Accesability Assistant</title>
+    <meta property="og:title" content="Accesability Assistant" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="utf-8" />
     <meta property="twitter:card" content="summary_large_image" />
@@ -93,7 +93,7 @@
             <main class="gateway-card">
               <div class="mode-selector">
                 <button
-                  id="btn-talk"
+                  id="btn-tta"
                   aria-pressed="true"
                   class="home-mode-btn active"
                 >
@@ -114,10 +114,10 @@
                       ></path>
                     </svg>
                   </div>
-                  <span>Talk to Me</span>
+                  <span>Text to Speech Assaintant</span>
                 </button>
                 <button
-                  id="btn-listen"
+                  id="btn-att"
                   aria-pressed="false"
                   class="home-mode-btn"
                 >
@@ -140,7 +140,7 @@
                       </g>
                     </svg>
                   </div>
-                  <span>Listen to Me</span>
+                  <span>Audio to Text Assaintant</span>
                 </button>
               </div>
               <div class="settings-grid">
@@ -149,20 +149,13 @@
                     Choose a Voice
                   </label>
                   <div class="select-wrapper">
-                    <select id="voice-select" class="large-select">
-                      <option value="jarvis">
-                        J.A.R.V.I.S. (Calm &amp; Helpful)
-                      </option>
-                      <option value="friday">
-                        F.R.I.D.A.Y. (Quick &amp; Bright)
-                      </option>
-                      <option value="edith">
-                        E.D.I.T.H. (Clear &amp; Direct)
-                      </option>
-                      <option value="homer">
-                        H.O.M.E.R. (Friendly &amp; Warm)
-                      </option>
-                    </select>
+                    <label for="voice-select" class="group-label">
+                      Choose a Voice
+                    </label>
+                    <div class="select-wrapper">
+                      <select id="voice-select" class="large-select">
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <div class="setting-group">
@@ -194,7 +187,7 @@
                       min="1"
                       max="100"
                       value="50"
-                      id="speed-slider"
+                      id="speed"
                       class="large-slider"
                     />
                     <div class="slider-icon">
@@ -317,8 +310,8 @@
                     inactiveBtn.setAttribute("aria-pressed", "false")
                   }
 
-                  btnTalk.addEventListener("click", () => setActiveMode(btnTalk, btnListen))
-                  btnListen.addEventListener("click", () => setActiveMode(btnListen, btnTalk))
+                  document.getElementById('btn-tta').addEventListener("click", () => setActiveMode(document.getElementById('btn-tta'), document.getElementById('btn-att')))
+                  document.getElementById('btn-att').addEventListener("click", () => setActiveMode(document.getElementById('btn-att'), document.getElementById('btn-tta')))
 
                   // Theme Color Picker Functionality
                   const colorDots = document.querySelectorAll(".color-dot")

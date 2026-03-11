@@ -46,6 +46,7 @@ function populateVoices() {
 
 window.speechSynthesis.onvoiceschanged = populateVoices;
 populateVoices();
+
 function waitForVoicesReady(timeout = 3000) {
   return new Promise((resolve) => {
     const start = Date.now();
@@ -67,12 +68,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   speakText(text);
 });
 
-document.getElementById('speak-button').addEventListener('click', () => {
+document.getElementById('btn-tta').addEventListener('click', () => {
   mode = 'text-to-speech';
   if (transcriber && typeof transcriber.stop === 'function') transcriber.stop();
 });
 
-document.getElementById('audio-to-text').addEventListener('click', () => {
+document.getElementById('btn-att').addEventListener('click', () => {
     mode = 'audio-to-text';
     startAudioToText();
 });
@@ -97,8 +98,8 @@ function speakText(text) {
     }
     console.log('Selected voice index:', voiceIndex);
     
-    const rate = parseFloat(document.getElementById('rate-input').value) || 1;
-    const pitch = parseFloat(document.getElementById('pitch-input').value) || 1;
+    const rate = parseFloat(document.getElementById('speed').value) / 50 || 1;
+    const pitch = parseFloat(document.getElementById('pitch-slider').value) || 1;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = voices[voiceIndex];
     utterance.rate = rate;
@@ -149,8 +150,8 @@ class EnsembleTranscriber {
     });
   }
 
-  start() {
-    this.initWhisper();
+  async start() {
+    await this.initWhisper();  // Wait for Whisper to load
     this.startWebSpeech();
     this.startWhisperMicrophone();
   }
@@ -167,9 +168,9 @@ class EnsembleTranscriber {
       let final = '';
       for (let i = 0; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          final += event.results[i][0].transcript;
+          final += event.results[i].transcript;
         } else {
-          interim += event.results[i][0].transcript;
+          interim += event.results[i].transcript;
         }
       }
       if (final) this.webSpeechTranscript += final;
@@ -185,16 +186,20 @@ class EnsembleTranscriber {
       const mediaRecorder = new MediaRecorder(stream);
       const chunks = [];
 
-      mediaRecorder.ondata = (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         chunks.push(e.data);
-        this.whisperWorker.recognize(new Blob(chunks)).then((result) => {
-          this.whisperTranscript += result.text + ' ';
-          this.mergeResults();
-        });
       };
 
-      mediaRecorder.start(1000);
-    });
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        this.whisperWorker.recognize(blob).then((result) => {
+          this.whisperTranscript += result.text + ' ';
+          this.mergeResults();
+        }).catch(err => console.error('Whisper error:', err));
+      };
+
+      mediaRecorder.start();  // Remove the 1000ms interval
+    }).catch(err => console.error('Microphone access denied:', err));
   }
 
   mergeResults() {
@@ -210,10 +215,6 @@ class EnsembleTranscriber {
       speakText('Hello! How can I assist you?');
     }
     
-    this.onTranscript(combined.trim());
-  }
-
-  stop() {
     this.recognition?.stop();
   }
 }
