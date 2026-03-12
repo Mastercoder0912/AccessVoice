@@ -7,7 +7,7 @@
       padding: 0;
       background: transparent;
       height: 100vh;
-      overflow: hidden; /* prevent scrollbars */
+      overflow: hidden;
     }
 
     body {
@@ -27,7 +27,14 @@
       display: inline-block;
       max-width: 760px;
       word-wrap: break-word;
-      overflow: hidden; /* hide internal scroll */
+      overflow: hidden;
+      cursor: grab;
+      user-select: none;
+      position: fixed;
+    }
+
+    #textBar:active {
+      cursor: grabbing;
     }
   </style>
 </head>
@@ -35,16 +42,32 @@
   <div id="textBar"></div>
   <script>
     const textBar = document.getElementById('textBar');
-    
-    // Listen for transcription updates from main process
-    const { ipcRenderer } = require('electron');
-    
-    ipcRenderer.on('update-text', (event, text) => {
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    textBar.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - textBar.offsetLeft;
+      offsetY = e.clientY - textBar.offsetTop;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        textBar.style.left = (e.clientX - offsetX) + 'px';
+        textBar.style.top = (e.clientY - offsetY) + 'px';
+        textBar.style.bottom = 'auto';
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.electronAPI.on('update-text', (text) => {
       textBar.textContent = text;
-      
-      // Auto-resize window to fit text
       const height = textBar.offsetHeight + 20;
-      ipcRenderer.send('resize-textbar', height);
+      window.electronAPI.send('resize-textbar', height);
     });
   </script>
 </body>

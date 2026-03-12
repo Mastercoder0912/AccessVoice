@@ -25,8 +25,13 @@ let assistantState = "idle";
 
 // Load available voices
 function populateVoices() {
+  const dummy = new SpeechSynthesisUtterance('');
+  window.speechSynthesis.speak(dummy);
+  window.speechSynthesis.cancel();
+  
   voices = window.speechSynthesis.getVoices();
   console.log('Available voices:', voices.length);
+  
   const voiceSelect = document.getElementById('voice-select');
   if (!voiceSelect) return;
   voiceSelect.innerHTML = '';
@@ -60,50 +65,47 @@ function waitForVoicesReady(timeout = 3000) {
   });
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
-  await waitForVoicesReady(1500);
-  populateVoices();
-  const text = 'Hello! This is your voice controller assistant. If you need voice assistance, then say hello, otherwise, click the button below so that I can help describe things to you via text.';
-  // call speakText regardless of whether voices populated; browser will use default voice
-  speakText(text);
-});
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('DOMContentLoaded fired');
+  
+  document.getElementById('btn-tta').addEventListener('click', () => {
+    console.log('btn-tta clicked');
+    mode = 'text-to-speech';
+    if (transcriber && typeof transcriber.stop === 'function') transcriber.stop();
+  });
 
-document.getElementById('btn-tta').addEventListener('click', () => {
-  mode = 'text-to-speech';
-  if (transcriber && typeof transcriber.stop === 'function') transcriber.stop();
-});
-
-document.getElementById('btn-att').addEventListener('click', () => {
+  document.getElementById('btn-att').addEventListener('click', () => {
+    console.log('btn-att clicked');
     mode = 'audio-to-text';
     startAudioToText();
+  });
+  
+  await waitForVoicesReady(2000);
+  populateVoices();
+  
+  console.log('About to call speakText');
+  const text = 'Hello! This is your voice controller assistant. If you need voice assistance, then say hello, otherwise, click the button below so that I can help describe things to you via text.';
+  speakText(text);
 });
 
 function speakText(text) {
     console.log('speakText called with:', text);
-    console.log('Available voices:', voices.length);
     
-    if (voices.length === 0) {
-      console.warn('No voices available yet; using default system voice');
+    // Send text to textbar
+    if (window.electronAPI) {
+      window.electronAPI.send('update-text', text);
     }
-
-    let voiceIndex = 0;
-    try {
-      const voiceSelectValue = document.getElementById('voice-select')?.value;
-      voiceIndex = voiceSelectValue ? parseInt(voiceSelectValue) : 0;
-    } catch (e) {
-      voiceIndex = 0;
-    }
-    if (voices.length > 0 && (isNaN(voiceIndex) || voiceIndex < 0 || voiceIndex >= voices.length)) {
-      voiceIndex = 0;
-    }
-    console.log('Selected voice index:', voiceIndex);
     
-    const rate = parseFloat(document.getElementById('speed').value) / 50 || 1;
-    const pitch = parseFloat(document.getElementById('pitch-slider').value) || 1;
+    const speedEl = document.getElementById('speed');
+    const pitchEl = document.getElementById('pitch-slider');
+    
+    const rate = speedEl ? parseFloat(speedEl.value) / 50 : 1;
+    const pitch = pitchEl ? parseFloat(pitchEl.value) / 50 : 1;
+    
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voices[voiceIndex];
-    utterance.rate = rate;
-    utterance.pitch = pitch;
+    
+    utterance.rate = Math.max(0.1, Math.min(rate, 10));
+    utterance.pitch = Math.max(0.1, Math.min(pitch, 2));
     
     utterance.onerror = (event) => {
       console.error('Speech synthesis error:', event.error);
@@ -113,10 +115,11 @@ function speakText(text) {
       console.log('Speech synthesis completed');
     };
     
-    console.log('Starting speech synthesis with voice:', utterance.voice?.name);
+    console.log('Starting speech synthesis');
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
 }
+
 function startAudioToText() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error('getUserMedia not supported on your browser!');

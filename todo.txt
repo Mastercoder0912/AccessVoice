@@ -1,6 +1,4 @@
-#TODO: verify gateway window is fully resizable and UI scales dynamically
-#TODO: connect gateway UI controls (voice, rate, pitch, mode) to renderer.js logic
-#TODO: wire gateway buttons to start/stop transcription and TTS modes
+#TODO: fix the limited range of textbar.html
 #TODO: implement assistantState loop (idle → listening → thinking → speaking → listening)
 #TODO: integrate Gemini API through main.js using IPC (replace placeholder)
 #TODO: route transcription results into textbar.html reliably (no console-only output)
@@ -9,7 +7,6 @@
 #TODO: add noise reduction settings to audio input (echoCancellation, noiseSuppression, autoGainControl)
 #TODO: improve transcription accuracy by stabilizing Whisper init and merging logic
 #TODO: build settings menu for voice assistant and transcription options
-#TODO: allow user to choose TTS voice from voice-select dropdown
 #TODO: allow user to adjust rate and pitch sliders and apply them to speakText()
 #TODO: allow user to add their own AI model API keys (ChatGPT, Gemini, Claude, etc.)
 #TODO: add system interaction layer (robotjs or similar) with safe IPC whitelist
