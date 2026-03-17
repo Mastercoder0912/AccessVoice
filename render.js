@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-att').addEventListener('click', () => {
     console.log('btn-att clicked');
     mode = 'audio-to-text';
+    assistantState = 'listening';
     startAudioToText();
   });
   
@@ -113,10 +114,16 @@ function speakText(text) {
     
     utterance.onend = () => {
       console.log('Speech synthesis completed');
+      assistantState = 'listening';
+    };
+    
+    utterance.onstart = () => {
+      assistantState = 'speaking';
     };
     
     console.log('Starting speech synthesis');
     window.speechSynthesis.cancel();
+    assistantState = 'thinking';
     window.speechSynthesis.speak(utterance);
 }
 
@@ -128,6 +135,9 @@ function startAudioToText() {
   if (!transcriber) transcriber = new EnsembleTranscriber();
   transcriber.onTranscript = (text) => {
     console.log('Transcribed:', text);
+    if (window.electronAPI) {
+      window.electronAPI.send('update-text', text);
+    }
   };
   transcriber.start();   
 }
@@ -176,8 +186,10 @@ class EnsembleTranscriber {
           interim += event.results[i].transcript;
         }
       }
-      if (final) this.webSpeechTranscript += final;
-      this.interimTranscript = interim;
+          
+    this.recognition.onstart = () => {
+      assistantState = 'listening';
+    };      this.interimTranscript = interim;
       this.mergeResults();
     };
 
@@ -211,10 +223,20 @@ class EnsembleTranscriber {
       ' ' + this.interimTranscript;
 
     const trimmed = combined.trim().toLowerCase();
+    // Send real-time transcription to textbar
+    if (trimmed) {
+      this.onTranscript(trimmed);
+    }
     
     if (trimmed.includes('hello')) {
       mode = 'text-to-speech';
+      assistantState = 'thinking';
       this.stop();
+      
+      // Small delay to let transcription appear before audio plays
+      setTimeout(() => {
+        speakText('Hello! How can I assist you?');
+      }, 150
       speakText('Hello! How can I assist you?');
     }
     

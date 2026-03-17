@@ -1,7 +1,4 @@
-#TODO: fix the limited range of textbar.html
-#TODO: implement assistantState loop (idle → listening → thinking → speaking → listening)
 #TODO: integrate Gemini API through main.js using IPC (replace placeholder)
-#TODO: route transcription results into textbar.html reliably (no console-only output)
 #TODO: ensure preload.js exposes correct IPC functions for update-text and ask-gemini
 #TODO: add error handling for speech recognition, speech synthesis, and getUserMedia
 #TODO: add noise reduction settings to audio input (echoCancellation, noiseSuppression, autoGainControl)

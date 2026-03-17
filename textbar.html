@@ -54,8 +54,17 @@
 
     document.addEventListener('mousemove', (e) => {
       if (isDragging) {
-        textBar.style.left = (e.clientX - offsetX) + 'px';
-        textBar.style.top = (e.clientY - offsetY) + 'px';
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
+        
+        // Constrain X: keep textbar within left and right boundaries
+        newX = Math.max(0, Math.min(newX, window.innerWidth - textBar.offsetWidth));
+        
+        // Constrain Y: keep textbar within top and bottom boundaries
+        newY = Math.max(0, Math.min(newY, window.innerHeight - textBar.offsetHeight));
+        
+        textBar.style.left = newX + 'px';
+        textBar.style.top = newY + 'px';
         textBar.style.bottom = 'auto';
       }
     });
