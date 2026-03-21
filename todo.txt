@@ -1,10 +1,7 @@
-#TODO: integrate Gemini API through main.js using IPC (replace placeholder)
-#TODO: ensure preload.js exposes correct IPC functions for update-text and ask-gemini
-#TODO: add error handling for speech recognition, speech synthesis, and getUserMedia
-#TODO: add noise reduction settings to audio input (echoCancellation, noiseSuppression, autoGainControl)
-#TODO: improve transcription accuracy by stabilizing Whisper init and merging logic
-#TODO: build settings menu for voice assistant and transcription options
-#TODO: allow user to adjust rate and pitch sliders and apply them to speakText()
-#TODO: allow user to add their own AI model API keys (ChatGPT, Gemini, Claude, etc.)
-#TODO: add system interaction layer (robotjs or similar) with safe IPC whitelist
+#TODO: parse Gemini responses to extract text and code blocks - test with various response formats
+#TODO: build settings menu for selecting AI models (Gemini, ChatGPT, Claude keys)
+#TODO: allow user to adjust rate and pitch sliders dynamically during speech
+#TODO: add system interaction layer with safe IPC whitelist (robotjs or alternatives)
 #TODO: refine gateway UI layout and responsiveness for accessibility
+#TODO: test audio --> transcript --> Gemini --> code execution full workflow
+#TODO: add logging/debugging tools for monitoring Gemini responses and code execution

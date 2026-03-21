@@ -1,11 +1,8 @@
-// Renderer process code
 let voices = [];
 let mode = 'text-to-speech';
 let transcriber = null;
 let assistantState = "idle"; 
-// idle | listening | thinking | speaking
 
-// Intercept console.log to forward any "Transcribed:" messages to the textBar
 (() => {
   const _log = console.log.bind(console);
   console.log = (...args) => {
@@ -23,7 +20,6 @@ let assistantState = "idle";
   };
 })();
 
-// Load available voices
 function populateVoices() {
   const dummy = new SpeechSynthesisUtterance('');
   window.speechSynthesis.speak(dummy);
@@ -148,6 +144,9 @@ class EnsembleTranscriber {
     this.interimTranscript = '';
     this.whisperTranscript = '';
     this.webSpeechTranscript = '';
+    this.audioBlob = null;
+    this.mediaRecorder = null;
+    this.stream = null;
     this.onTranscript = (text) => {
       console.log('Transcribed:', text);
       if (window.electronAPI) {
@@ -189,35 +188,61 @@ class EnsembleTranscriber {
           
     this.recognition.onstart = () => {
       assistantState = 'listening';
-    };      this.interimTranscript = interim;
+    };
+      this.finalTranscript += final;
+      this.webSpeechTranscript = this.finalTranscript + interim;
+      this.interimTranscript = interim;
       this.mergeResults();
+    };
+
+    this.recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
     };
 
     this.recognition.start();
   }
 
   startWhisperMicrophone() {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      const mediaRecorder = new MediaRecorder(stream);
+    navigator.mediaDevices.getUserMedia({ 
+      audio: { 
+        echoCancellation: true, 
+        noiseSuppression: true, 
+        autoGainControl: true 
+      } 
+    }).then((stream) => {
+      this.stream = stream;
+      this.mediaRecorder = new MediaRecorder(stream);
       const chunks = [];
 
-      mediaRecorder.ondataavailable = (e) => {
+      this.mediaRecorder.ondataavailable = (e) => {
         chunks.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/wav' });
-        this.whisperWorker.recognize(blob).then((result) => {
+      this.mediaRecorder.onstop = () => {
+        this.audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        this.whisperWorker.recognize(this.audioBlob).then((result) => {
           this.whisperTranscript += result.text + ' ';
           this.mergeResults();
         }).catch(err => console.error('Whisper error:', err));
       };
 
-      mediaRecorder.start();  // Remove the 1000ms interval
+      this.mediaRecorder.start();
     }).catch(err => console.error('Microphone access denied:', err));
   }
 
-  mergeResults() {
+  stop() {
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.stop();
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
+    if (this.recognition) {
+      this.recognition.stop();
+    }
+  }
+
+  async mergeResults() {
     const combined = this.finalTranscript +
       (this.whisperTranscript || this.webSpeechTranscript) +
       ' ' + this.interimTranscript;
@@ -233,18 +258,36 @@ class EnsembleTranscriber {
       assistantState = 'thinking';
       this.stop();
       
-      // Small delay to let transcription appear before audio plays
-      setTimeout(() => {
-        speakText('Hello! How can I assist you?');
-      }, 150
-      speakText('Hello! How can I assist you?');
+      // If we have audio and transcript, send to Gemini API
+      if (this.audioBlob && trimmed) {
+        try {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const audioBase64 = e.target.result.split(',')[1]; // Get base64 part
+            const response = await window.electronAPI.askGeminiWithAudio(audioBase64, trimmed);
+            console.log('Gemini response:', response);
+            // Small delay to let transcription appear before audio plays
+            setTimeout(() => {
+              speakText(response);
+            }, 150);
+          };
+          reader.readAsDataURL(this.audioBlob);
+        } catch (err) {
+          console.error('Error sending to Gemini:', err);
+          // Fallback to generic response
+          setTimeout(() => {
+            speakText('Hello! How can I assist you?');
+          }, 150);
+        }
+      } else {
+        // Fallback if no audio
+        setTimeout(() => {
+          speakText('Hello! How can I assist you?');
+        }, 150);
+      }
     }
     
     this.recognition?.stop();
   }
 }
-
-window.electronAPI.askGemini("Hello").then(response => {
-  console.log(response);
-});
 
