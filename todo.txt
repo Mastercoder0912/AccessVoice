@@ -1,7 +1,4 @@
-#TODO: parse Gemini responses to extract text and code blocks - test with various response formats
 #TODO: build settings menu for selecting AI models (Gemini, ChatGPT, Claude keys)
-#TODO: allow user to adjust rate and pitch sliders dynamically during speech
-#TODO: add system interaction layer with safe IPC whitelist (robotjs or alternatives)
 #TODO: refine gateway UI layout and responsiveness for accessibility
 #TODO: test audio --> transcript --> Gemini --> code execution full workflow
 #TODO: add logging/debugging tools for monitoring Gemini responses and code execution

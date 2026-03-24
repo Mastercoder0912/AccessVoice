@@ -98,8 +98,9 @@ function initPythonProcess() {
       if (pendingResponse) {
         let responseText = output.response || output;
 
+        // If this is an audio request, parse response and extract code + text from output object
         if (pendingResponse.isAudio) {
-          responseText = parseGeminiResponse(responseText);
+          responseText = parseGeminiResponse(output);
         }
         
         pendingResponse.resolve(responseText);
@@ -122,11 +123,33 @@ app.on('will-quit', () => {
   }
 });
 
-function parseGeminiResponse(rawResponse) {
-  const codeMatch = rawResponse.match(/<CODE>([\s\S]*?)<\/CODE>/i);
-  const code = codeMatch ? codeMatch[1].trim() : null;
-  
-  const text = rawResponse.replace(/<CODE>[\s\S]*?<\/CODE>/i, '').trim();
+// Safe system execution with whitelist
+const SAFE_COMMANDS_WHITELIST = {
+  'open-url': (url) => {
+    const { exec } = require('child_process');
+    const sanitized = url.replace(/[;&|`$()]/g, '');
+    exec(`start "${sanitized}"`);
+  },
+  'open-app': (app) => {
+    const { exec } = require('child_process');
+    const sanitized = app.replace(/[;&|`$()]/g, '');
+    exec(`start "" "${sanitized}"`);
+  },
+  'minimize': () => {
+    if (mainWindow) mainWindow.minimize();
+  },
+  'maximize': () => {
+    if (mainWindow) mainWindow.maximize();
+  },
+  'close': () => {
+    if (mainWindow) mainWindow.close();
+  }
+};
+
+function parseGeminiResponse(responseObj) {
+  // responseObj now has both 'text' and 'code' fields from ai.py
+  const text = responseObj.text || responseObj.response || responseObj;
+  const code = responseObj.code || null;
 
   if (code) {
     try {
@@ -139,6 +162,7 @@ function parseGeminiResponse(rawResponse) {
   
   return text;
 }
+
 
 ipcMain.handle('ask-gemini', async (event, prompt) => {
   return new Promise((resolve, reject) => {
@@ -180,4 +204,19 @@ ipcMain.handle('ask-gemini-audio', async (event, { audioBase64, transcript }) =>
       reject(err);
     }
   });
+});
+
+// Safe system execution handler with whitelist
+ipcMain.handle('execute-system-command', async (event, command, ...args) => {
+  if (!SAFE_COMMANDS_WHITELIST[command]) {
+    throw new Error(`Command '${command}' not in whitelist`);
+  }
+  
+  try {
+    SAFE_COMMANDS_WHITELIST[command](...args);
+    return { success: true };
+  } catch (err) {
+    console.error('System execution error:', err);
+    return { success: false, error: err.message };
+  }
 });   

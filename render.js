@@ -76,6 +76,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     assistantState = 'listening';
     startAudioToText();
   });
+
+  // Add event listeners for slider changes to adjust speaking rate/pitch dynamically
+  const speedSlider = document.getElementById('speed');
+  const pitchSlider = document.getElementById('pitch-slider');
+
+  if (speedSlider) {
+    speedSlider.addEventListener('input', (e) => {
+      console.log('Speed changed to:', e.target.value);
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    });
+  }
+
+  if (pitchSlider) {
+    pitchSlider.addEventListener('input', (e) => {
+      console.log('Pitch changed to:', e.target.value);
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    });
+  }
   
   await waitForVoicesReady(2000);
   populateVoices();
