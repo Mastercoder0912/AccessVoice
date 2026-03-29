@@ -2,3 +2,4 @@
 #TODO: refine gateway UI layout and responsiveness for accessibility
 #TODO: test audio --> transcript --> Gemini --> code execution full workflow
 #TODO: add logging/debugging tools for monitoring Gemini responses and code execution
+#TODO: debug and fix speech recognition network errors and empty lang property in Electron

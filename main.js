@@ -1,10 +1,15 @@
-const { app, BrowserWindow } = require('electron');
+require('dotenv').config();
+
+const { app, BrowserWindow, ipcMain } = require('electron');
 const { spawn } = require('child_process');
+const { pipeline } = require('@xenova/transformers');
+const { decode } = require('wav-decoder');
 
 const path = require('path');
 
 let mainWindow;
 let textBar;
+let transcriber;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -16,7 +21,9 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true
     }
   });
 
@@ -35,7 +42,9 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false,
+      allowRunningInsecureContent: true
     }
   });
 
@@ -44,7 +53,35 @@ function createWindow() {
   initPythonProcess();
 }
 
-app.on('ready', createWindow);
+async function initTranscriber() {
+  try {
+    console.log('Initializing Whisper transcriber...');
+
+    // Use app-specific cache and force remote download when local cache is absent.
+    const cacheDir = path.join(app.getPath('userData'), 'xenova-cache');
+    process.env.XENOVA_CACHE_DIR = cacheDir;
+    process.env.XENOVA_HOME = cacheDir;
+
+    transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+      progress_callback: (progress) => console.log('Whisper init progress:', progress),
+      use_cache: true,
+      local_files_only: false,
+      _internal_disable_onnx: false,
+    });
+
+    console.log('Whisper transcriber initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize transcriber:', error);
+
+    // fallback: in case model cannot load, use a no-op transcriber
+    transcriber = async () => ({ text: '' });
+  }
+}
+
+app.on('ready', async () => {
+  await initTranscriber();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -58,8 +95,6 @@ app.on('activate', () => {
   }
 });
 
-const { ipcMain } = require('electron');
-
 ipcMain.on('update-text', (event, text) => {
   if (textBar && !textBar.isDestroyed()) {
     textBar.webContents.send('update-text', text);
@@ -69,6 +104,31 @@ ipcMain.on('resize-textbar', (event, height) => {
   textBar.setSize(800, Math.min(height, 200)); 
 });
 
+ipcMain.handle('transcribe-audio', async (event, audioData) => {
+  if (!transcriber) {
+    await initTranscriber();
+  }
+  if (!transcriber) {
+    throw new Error('Transcriber not available');
+  }
+  try {
+    console.log('Starting transcription, audio data type:', typeof audioData, 'length:', audioData.length);
+
+    // audioData is already a Float32Array from renderer
+    const result = await transcriber(audioData, {
+      return_timestamps: false,
+      chunk_length_s: 30,
+      stride_length_s: 5
+    });
+
+    console.log('Transcription complete:', result.text);
+    return result.text || '';
+  } catch (error) {
+    console.error('Transcription error:', error);
+    throw error;
+  }
+});
+
 let python = null;
 let responsePending = false;
 let pendingResponse = null;
@@ -76,7 +136,7 @@ let pendingResponse = null;
 function initPythonProcess() {
   if (python) return;
 
-  python = spawn('python', ['ai.py'], { cwd: __dirname });
+  python = spawn('C:/Users/aamal/.vscode/.vscode/venv/Scripts/python.exe', ['ai.py'], { cwd: __dirname });
 
   python.stderr.on('data', (data) => {
     console.error(`Python stderr: ${data}`);
@@ -116,7 +176,7 @@ function initPythonProcess() {
   });
 }
 
-
+// App lifecycle events
 app.on('will-quit', () => {
   if (python) {
     python.kill();

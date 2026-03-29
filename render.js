@@ -48,6 +48,54 @@ function populateVoices() {
 window.speechSynthesis.onvoiceschanged = populateVoices;
 populateVoices();
 
+// Convert AudioBuffer to WAV format
+function audioBufferToWav(buffer) {
+  const length = buffer.length;
+  const numberOfChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bytesPerSample = 2; // 16-bit
+  const blockAlign = numberOfChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = length * blockAlign;
+  const bufferSize = 44 + dataSize;
+
+  const arrayBuffer = new ArrayBuffer(bufferSize);
+  const view = new DataView(arrayBuffer);
+
+  // WAV header
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, bufferSize - 8, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // Subchunk1Size
+  view.setUint16(20, 1, true); // AudioFormat (PCM)
+  view.setUint16(22, numberOfChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true); // BitsPerSample
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  // Convert float samples to 16-bit PCM
+  let offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let channel = 0; channel < numberOfChannels; channel++) {
+      const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+      view.setInt16(offset, sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return arrayBuffer;
+}
+
 function waitForVoicesReady(timeout = 3000) {
   return new Promise((resolve) => {
     const start = Date.now();
@@ -68,6 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('btn-tta clicked');
     mode = 'text-to-speech';
     if (transcriber && typeof transcriber.stop === 'function') transcriber.stop();
+    speakText('I am ready to listen for your command. Please say it now.');
   });
 
   document.getElementById('btn-att').addEventListener('click', () => {
@@ -133,6 +182,11 @@ function speakText(text) {
     utterance.onend = () => {
       console.log('Speech synthesis completed');
       assistantState = 'listening';
+
+      // After TTS ends, start listening for voice input
+      if (mode === 'text-to-speech') {
+        startAudioToText();
+      }
     };
     
     utterance.onstart = () => {
@@ -169,6 +223,7 @@ class EnsembleTranscriber {
     this.audioBlob = null;
     this.mediaRecorder = null;
     this.stream = null;
+    this.lastSentTranscript = '';
     this.onTranscript = (text) => {
       console.log('Transcribed:', text);
       if (window.electronAPI) {
@@ -177,25 +232,22 @@ class EnsembleTranscriber {
     };
   }
 
-  async initWhisper() {
-    this.whisperWorker = await Whisper.init({
-      model: 'tiny',
-      lang: 'en',
-    });
-  }
-
   async start() {
-    await this.initWhisper();  // Wait for Whisper to load
-    this.startWebSpeech();
     this.startWhisperMicrophone();
   }
 
   startWebSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.error('SpeechRecognition not supported in this environment');
+      return;
+    }
     this.recognition = new SpeechRecognition();
+    console.log('SpeechRecognition created:', this.recognition);
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.lang = 'en-US';
+    console.log('SpeechRecognition after setting:', this.recognition);
 
     this.recognition.onresult = (event) => {
       let interim = '';
@@ -219,6 +271,23 @@ class EnsembleTranscriber {
 
     this.recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
+
+      // Auto-retry transient speech recognition errors where possible
+      if (event.error === 'network' || event.error === 'no-speech' || event.error === 'aborted') {
+        console.warn('Retrying speech recognition in 500ms due to transient error:', event.error);
+        setTimeout(() => {
+          try {
+            this.recognition.start();
+          } catch (err) {
+            console.error('Retry start failed:', err);
+          }
+        }, 500);
+      }
+
+      // update textbar with guidance
+      if (window.electronAPI) {
+        window.electronAPI.send('update-text', `Speech recognition error (${event.error}). Check network/mic and speak clearly.`);
+      }
     };
 
     this.recognition.start();
@@ -233,23 +302,52 @@ class EnsembleTranscriber {
       } 
     }).then((stream) => {
       this.stream = stream;
-      this.mediaRecorder = new MediaRecorder(stream);
+      this.mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       const chunks = [];
+      let recordingTimeout = null;
 
       this.mediaRecorder.ondataavailable = (e) => {
         chunks.push(e.data);
       };
 
-      this.mediaRecorder.onstop = () => {
-        this.audioBlob = new Blob(chunks, { type: 'audio/wav' });
-        this.whisperWorker.recognize(this.audioBlob).then((result) => {
-          this.whisperTranscript += result.text + ' ';
-          this.mergeResults();
-        }).catch(err => console.error('Whisper error:', err));
-      };
+      this.mediaRecorder.onstop = async () => {
+        if (recordingTimeout) clearTimeout(recordingTimeout);
 
-      this.mediaRecorder.start();
-    }).catch(err => console.error('Microphone access denied:', err));
+        this.audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        console.log('Recording stopped, audio blob size:', this.audioBlob.size);
+
+        try {
+          // Decode WebM to AudioBuffer, then send raw Float32Array
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const arrayBuffer = await this.audioBlob.arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Send raw Float32Array directly to backend
+          const audioData = audioBuffer.getChannelData(0); // First channel
+          console.log('Sending raw audio data, samples:', audioData.length, 'sample rate:', audioBuffer.sampleRate);
+
+          try {
+            const transcript = await window.electronAPI.transcribeAudio(audioData);
+            console.log('Whisper transcript received:', transcript);
+            this.whisperTranscript += transcript + ' ';
+            this.mergeResults();
+          } catch (err) {
+            console.error('Transcription error:', err);
+            this.mergeResults();
+          }
+      
+      recordingTimeout = setTimeout(() => {
+        console.warn('Recording timeout reached (30s), stopping capture');
+        this.stop();
+      }, 30000);
+    }).catch(err => {
+      console.error('Microphone access denied:', err);
+      if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+        window.electronAPI?.send('update-text', 'Microphone access denied. Please allow microphone permissions and click the button again.');
+      }
+    });
   }
 
   stop() {
@@ -274,21 +372,27 @@ class EnsembleTranscriber {
     if (trimmed) {
       this.onTranscript(trimmed);
     }
-    
-    if (trimmed.includes('hello')) {
+
+    // Do not stop recognition here; keep listening to live speech in continuous mode
+
+    const triggerWords = ['hello', 'open', 'search', 'play', 'close', 'stop', 'go'];
+    const hasTrigger = triggerWords.some((w) => trimmed.includes(w));
+
+    if (hasTrigger && trimmed && trimmed !== this.lastSentTranscript) {
+      this.lastSentTranscript = trimmed;
       mode = 'text-to-speech';
       assistantState = 'thinking';
-      this.stop();
       
-      // If we have audio and transcript, send to Gemini API
-      if (this.audioBlob && trimmed) {
+      console.log('Trigger detected, stopping recording:', trimmed);
+      this.stop();
+
+      if (this.audioBlob) {
         try {
           const reader = new FileReader();
           reader.onload = async (e) => {
-            const audioBase64 = e.target.result.split(',')[1]; // Get base64 part
+            const audioBase64 = e.target.result.split(',')[1];
             const response = await window.electronAPI.askGeminiWithAudio(audioBase64, trimmed);
             console.log('Gemini response:', response);
-            // Small delay to let transcription appear before audio plays
             setTimeout(() => {
               speakText(response);
             }, 150);
@@ -296,20 +400,16 @@ class EnsembleTranscriber {
           reader.readAsDataURL(this.audioBlob);
         } catch (err) {
           console.error('Error sending to Gemini:', err);
-          // Fallback to generic response
           setTimeout(() => {
-            speakText('Hello! How can I assist you?');
+            speakText('Sorry, there was an error processing your request.');
           }, 150);
         }
       } else {
-        // Fallback if no audio
         setTimeout(() => {
           speakText('Hello! How can I assist you?');
         }, 150);
       }
     }
-    
-    this.recognition?.stop();
   }
 }
 
