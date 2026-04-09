@@ -233,9 +233,9 @@ function startAudioToText() {
         console.error('getUserMedia not supported on your browser!');
         return;
     }
-  if (!transcriber) transcriber = new EnsembleTranscriber();
+  if (!transcriber) transcriber = new AudioRecorder();
   transcriber.onTranscript = (text) => {
-    console.log('Transcribed:', text);
+    console.log('[AUDIO] Transcribed:', text);
     if (window.electronAPI) {
       window.electronAPI.send('update-text', text);
     }
@@ -243,14 +243,13 @@ function startAudioToText() {
   transcriber.start();   
 }
 
-class EnsembleTranscriber {
+class AudioRecorder {
   constructor() {
     this.mediaRecorder = null;
     this.stream = null;
     this.audioBlob = null;
-    this.recordingActive = false;
     this.onTranscript = (text) => {
-      console.log('[WHISPER] Transcribed:', text);
+      console.log('[AUDIO] Transcribed:', text);
       if (window.electronAPI) {
         window.electronAPI.send('update-text', text);
       }
@@ -258,22 +257,20 @@ class EnsembleTranscriber {
   }
 
   async start() {
-    console.log('[WHISPER] Starting Whisper microphone recording...');
-    this.startWhisperMicrophone();
-  }
+    console.log('[AUDIO] Starting microphone recording...');
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          echoCancellation: true, 
+          noiseSuppression: true, 
+          autoGainControl: true 
+        } 
+      });
 
-  startWhisperMicrophone() {
-    navigator.mediaDevices.getUserMedia({ 
-      audio: { 
-        echoCancellation: true, 
-        noiseSuppression: true, 
-        autoGainControl: true 
-      } 
-    }).then((stream) => {
-      this.stream = stream;
-      this.mediaRecorder = new MediaRecorder(stream, {
+      this.mediaRecorder = new MediaRecorder(this.stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
+
       const chunks = [];
       let recordingTimeout = null;
 
@@ -285,74 +282,64 @@ class EnsembleTranscriber {
         if (recordingTimeout) clearTimeout(recordingTimeout);
 
         this.audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        console.log('[WHISPER] Recording stopped, audio blob size:', this.audioBlob.size);
+        console.log('[AUDIO] Recording stopped, size:', this.audioBlob.size);
 
         try {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const arrayBuffer = await this.audioBlob.arrayBuffer();
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-          const audioData = audioBuffer.getChannelData(0);
-          console.log('[WHISPER] Sending audio, samples:', audioData.length);
-
-          const transcript = await window.electronAPI.transcribeAudio(audioData);
-          console.log('[WHISPER] Transcript received:', transcript);
-          
-          if (transcript && transcript.trim()) {
-            mode = 'text-to-speech';
-            assistantState = 'thinking';
-            this.onTranscript(transcript);
+          // Convert audio to base64
+          const reader = new FileReader();
+          reader.onload = async () => {
+            const audioBase64 = reader.result.split(',')[1];
+            console.log('[AUDIO] Sending to Python for transcription...');
             
-            // Send Whisper transcript to Gemini for processing
-            console.log('[WHISPER] Sending to Gemini:', transcript);
             try {
-              const response = await window.electronAPI.askGemini(transcript);
-              console.log('[WHISPER] Gemini response:', response);
-              setTimeout(() => {
-                speakText(response);
-              }, 150);
-            } catch (geminiErr) {
-              console.error('[WHISPER] Gemini failed:', geminiErr);
+              const response = await window.electronAPI.askGeminiWithAudio(audioBase64);
+              console.log('[AUDIO] Response:', response);
+              
+              if (response && response.text) {
+                mode = 'text-to-speech';
+                assistantState = 'thinking';
+                this.onTranscript(response.text);
+                setTimeout(() => {
+                  speakText(response.text);
+                }, 150);
+              }
+            } catch (err) {
+              console.error('[AUDIO] Error from backend:', err);
               if (window.electronAPI) {
-                window.electronAPI.send('update-text', 'Gemini processing failed. Please try again.');
+                window.electronAPI.send('update-text', 'Error processing audio. Please try again.');
               }
             }
-          } else {
-            console.warn('[WHISPER] No transcript received');
-            if (window.electronAPI) {
-              window.electronAPI.send('update-text', 'Could not understand audio. Please try again.');
-            }
-          }
+          };
+          reader.readAsDataURL(this.audioBlob);
         } catch (err) {
-          console.error('[WHISPER] Error:', err);
+          console.error('[AUDIO] Error:', err);
           if (window.electronAPI) {
-            window.electronAPI.send('update-text', 'Transcription failed. Please try again.');
+            window.electronAPI.send('update-text', 'Error processing audio. Please try again.');
           }
         }
       };
 
       recordingTimeout = setTimeout(() => {
-        console.warn('[WHISPER] 30s timeout reached, stopping');
+        console.warn('[AUDIO] 30s timeout reached, stopping');
         this.stop();
       }, 30000);
 
       this.mediaRecorder.start();
-      this.recordingActive = true;
-      console.log('[WHISPER] Recording started');
+      console.log('[AUDIO] Recording started');
       if (window.electronAPI) {
         window.electronAPI.send('update-text', 'Listening... (30s max)');
       }
-    }).catch(err => {
-      console.error('[WHISPER] Microphone access denied:', err);
+    } catch (err) {
+      console.error('[AUDIO] Microphone access denied:', err);
       if (window.electronAPI) {
         window.electronAPI.send('update-text', 'Microphone access denied. Please allow permissions.');
       }
-    });
+    }
   }
 
   stop() {
     if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
       this.mediaRecorder.stop();
-      this.recordingActive = false;
     }
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());

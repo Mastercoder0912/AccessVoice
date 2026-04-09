@@ -1,7 +1,10 @@
 #TODO: build settings menu for selecting AI models (Gemini, ChatGPT, Claude keys)
 #TODO: refine gateway UI layout and responsiveness for accessibility
-#TODO: test audio --> transcript --> Gemini --> code execution full workflow
+#TODO: test manual audio input --> transcript --> Gemini --> code execution workflow (requires user interaction)
 #TODO: add logging/debugging tools for monitoring Gemini responses and code execution
-#DONE: remove Web Speech Recognition - use Whisper only (offline, no network errors)
-#DONE: implement Whisper with inline Gemini processing
-#DONE: debug and fix speech recognition network errors by removing Web Speech dependency
+#DONE: move Whisper transcription from JS to Python backend (ai.py) - now uses Gemini audio transcription
+#DONE: remove Whisper dependencies from main.js and render.js
+#DONE: update Gemini API to use google.generativeai with audio support
+#DONE: simplify AudioRecorder in render.js - records audio and sends base64 to backend
+#DONE: verified backend works with root venv (google-generativeai installed)
+#DONE: all test cases (1-4) verified: voices load, TTS works, backend structure correct

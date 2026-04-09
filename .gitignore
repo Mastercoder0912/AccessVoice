@@ -1,3 +1,6 @@
 node_modules/
 .DS_Store
 *.log
+ai_test.py
+test_manual.py
+test_gemini.js
