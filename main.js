@@ -104,6 +104,16 @@ ipcMain.on('resize-textbar', (event, height) => {
   textBar.setSize(800, Math.min(height, 200)); 
 });
 
+ipcMain.on('log-to-terminal', (event, { level, message }) => {
+  if (level === 'error') {
+    console.error('[RENDERER]', message);
+  } else if (level === 'warn') {
+    console.warn('[RENDERER]', message);
+  } else {
+    console.log('[RENDERER]', message);
+  }
+});
+
 ipcMain.handle('transcribe-audio', async (event, audioData) => {
   if (!transcriber) {
     await initTranscriber();

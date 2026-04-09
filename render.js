@@ -5,9 +5,16 @@ let assistantState = "idle";
 
 (() => {
   const _log = console.log.bind(console);
+  const _error = console.error.bind(console);
+  const _warn = console.warn.bind(console);
+  
   console.log = (...args) => {
     try {
       _log(...args);
+      // Send to main process for terminal output
+      if (window.electronAPI && typeof window.electronAPI.send === 'function') {
+        window.electronAPI.send('log-to-terminal', { level: 'log', message: args.join(' ') });
+      }
       if (typeof args[0] === 'string' && args[0].startsWith('Transcribed:')) {
         const payload = args.slice(1).join(' ');
         if (window.electronAPI && typeof window.electronAPI.send === 'function') {
@@ -16,6 +23,28 @@ let assistantState = "idle";
       }
     } catch (e) {
       _log('console interceptor error', e);
+    }
+  };
+  
+  console.error = (...args) => {
+    try {
+      _error(...args);
+      if (window.electronAPI && typeof window.electronAPI.send === 'function') {
+        window.electronAPI.send('log-to-terminal', { level: 'error', message: args.join(' ') });
+      }
+    } catch (e) {
+      _error('console interceptor error', e);
+    }
+  };
+  
+  console.warn = (...args) => {
+    try {
+      _warn(...args);
+      if (window.electronAPI && typeof window.electronAPI.send === 'function') {
+        window.electronAPI.send('log-to-terminal', { level: 'warn', message: args.join(' ') });
+      }
+    } catch (e) {
+      _warn('console interceptor error', e);
     }
   };
 })();
@@ -216,16 +245,12 @@ function startAudioToText() {
 
 class EnsembleTranscriber {
   constructor() {
-    this.finalTranscript = '';
-    this.interimTranscript = '';
-    this.whisperTranscript = '';
-    this.webSpeechTranscript = '';
-    this.audioBlob = null;
     this.mediaRecorder = null;
     this.stream = null;
-    this.lastSentTranscript = '';
+    this.audioBlob = null;
+    this.recordingActive = false;
     this.onTranscript = (text) => {
-      console.log('Transcribed:', text);
+      console.log('[WHISPER] Transcribed:', text);
       if (window.electronAPI) {
         window.electronAPI.send('update-text', text);
       }
@@ -233,64 +258,8 @@ class EnsembleTranscriber {
   }
 
   async start() {
+    console.log('[WHISPER] Starting Whisper microphone recording...');
     this.startWhisperMicrophone();
-  }
-
-  startWebSpeech() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.error('SpeechRecognition not supported in this environment');
-      return;
-    }
-    this.recognition = new SpeechRecognition();
-    console.log('SpeechRecognition created:', this.recognition);
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = 'en-US';
-    console.log('SpeechRecognition after setting:', this.recognition);
-
-    this.recognition.onresult = (event) => {
-      let interim = '';
-      let final = '';
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          final += event.results[i].transcript;
-        } else {
-          interim += event.results[i].transcript;
-        }
-      }
-          
-    this.recognition.onstart = () => {
-      assistantState = 'listening';
-    };
-      this.finalTranscript += final;
-      this.webSpeechTranscript = this.finalTranscript + interim;
-      this.interimTranscript = interim;
-      this.mergeResults();
-    };
-
-    this.recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-
-      // Auto-retry transient speech recognition errors where possible
-      if (event.error === 'network' || event.error === 'no-speech' || event.error === 'aborted') {
-        console.warn('Retrying speech recognition in 500ms due to transient error:', event.error);
-        setTimeout(() => {
-          try {
-            this.recognition.start();
-          } catch (err) {
-            console.error('Retry start failed:', err);
-          }
-        }, 500);
-      }
-
-      // update textbar with guidance
-      if (window.electronAPI) {
-        window.electronAPI.send('update-text', `Speech recognition error (${event.error}). Check network/mic and speak clearly.`);
-      }
-    };
-
-    this.recognition.start();
   }
 
   startWhisperMicrophone() {
@@ -316,36 +285,66 @@ class EnsembleTranscriber {
         if (recordingTimeout) clearTimeout(recordingTimeout);
 
         this.audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        console.log('Recording stopped, audio blob size:', this.audioBlob.size);
+        console.log('[WHISPER] Recording stopped, audio blob size:', this.audioBlob.size);
 
         try {
-          // Decode WebM to AudioBuffer, then send raw Float32Array
           const audioContext = new (window.AudioContext || window.webkitAudioContext)();
           const arrayBuffer = await this.audioBlob.arrayBuffer();
           const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          const audioData = audioBuffer.getChannelData(0);
+          console.log('[WHISPER] Sending audio, samples:', audioData.length);
 
-          // Send raw Float32Array directly to backend
-          const audioData = audioBuffer.getChannelData(0); // First channel
-          console.log('Sending raw audio data, samples:', audioData.length, 'sample rate:', audioBuffer.sampleRate);
-
-          try {
-            const transcript = await window.electronAPI.transcribeAudio(audioData);
-            console.log('Whisper transcript received:', transcript);
-            this.whisperTranscript += transcript + ' ';
-            this.mergeResults();
-          } catch (err) {
-            console.error('Transcription error:', err);
-            this.mergeResults();
+          const transcript = await window.electronAPI.transcribeAudio(audioData);
+          console.log('[WHISPER] Transcript received:', transcript);
+          
+          if (transcript && transcript.trim()) {
+            mode = 'text-to-speech';
+            assistantState = 'thinking';
+            this.onTranscript(transcript);
+            
+            // Send Whisper transcript to Gemini for processing
+            console.log('[WHISPER] Sending to Gemini:', transcript);
+            try {
+              const response = await window.electronAPI.askGemini(transcript);
+              console.log('[WHISPER] Gemini response:', response);
+              setTimeout(() => {
+                speakText(response);
+              }, 150);
+            } catch (geminiErr) {
+              console.error('[WHISPER] Gemini failed:', geminiErr);
+              if (window.electronAPI) {
+                window.electronAPI.send('update-text', 'Gemini processing failed. Please try again.');
+              }
+            }
+          } else {
+            console.warn('[WHISPER] No transcript received');
+            if (window.electronAPI) {
+              window.electronAPI.send('update-text', 'Could not understand audio. Please try again.');
+            }
           }
-      
+        } catch (err) {
+          console.error('[WHISPER] Error:', err);
+          if (window.electronAPI) {
+            window.electronAPI.send('update-text', 'Transcription failed. Please try again.');
+          }
+        }
+      };
+
       recordingTimeout = setTimeout(() => {
-        console.warn('Recording timeout reached (30s), stopping capture');
+        console.warn('[WHISPER] 30s timeout reached, stopping');
         this.stop();
       }, 30000);
+
+      this.mediaRecorder.start();
+      this.recordingActive = true;
+      console.log('[WHISPER] Recording started');
+      if (window.electronAPI) {
+        window.electronAPI.send('update-text', 'Listening... (30s max)');
+      }
     }).catch(err => {
-      console.error('Microphone access denied:', err);
-      if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-        window.electronAPI?.send('update-text', 'Microphone access denied. Please allow microphone permissions and click the button again.');
+      console.error('[WHISPER] Microphone access denied:', err);
+      if (window.electronAPI) {
+        window.electronAPI.send('update-text', 'Microphone access denied. Please allow permissions.');
       }
     });
   }
@@ -353,62 +352,10 @@ class EnsembleTranscriber {
   stop() {
     if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
       this.mediaRecorder.stop();
+      this.recordingActive = false;
     }
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
-    }
-    if (this.recognition) {
-      this.recognition.stop();
-    }
-  }
-
-  async mergeResults() {
-    const combined = this.finalTranscript +
-      (this.whisperTranscript || this.webSpeechTranscript) +
-      ' ' + this.interimTranscript;
-
-    const trimmed = combined.trim().toLowerCase();
-    // Send real-time transcription to textbar
-    if (trimmed) {
-      this.onTranscript(trimmed);
-    }
-
-    // Do not stop recognition here; keep listening to live speech in continuous mode
-
-    const triggerWords = ['hello', 'open', 'search', 'play', 'close', 'stop', 'go'];
-    const hasTrigger = triggerWords.some((w) => trimmed.includes(w));
-
-    if (hasTrigger && trimmed && trimmed !== this.lastSentTranscript) {
-      this.lastSentTranscript = trimmed;
-      mode = 'text-to-speech';
-      assistantState = 'thinking';
-      
-      console.log('Trigger detected, stopping recording:', trimmed);
-      this.stop();
-
-      if (this.audioBlob) {
-        try {
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            const audioBase64 = e.target.result.split(',')[1];
-            const response = await window.electronAPI.askGeminiWithAudio(audioBase64, trimmed);
-            console.log('Gemini response:', response);
-            setTimeout(() => {
-              speakText(response);
-            }, 150);
-          };
-          reader.readAsDataURL(this.audioBlob);
-        } catch (err) {
-          console.error('Error sending to Gemini:', err);
-          setTimeout(() => {
-            speakText('Sorry, there was an error processing your request.');
-          }, 150);
-        }
-      } else {
-        setTimeout(() => {
-          speakText('Hello! How can I assist you?');
-        }, 150);
-      }
     }
   }
 }
