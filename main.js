@@ -93,7 +93,10 @@ let pendingResponse = null;
 function initPythonProcess() {
   if (python) return;
 
-  python = spawn('C:/Users/aamal/.vscode/.vscode/venv/Scripts/python.exe', ['ai.py'], { cwd: __dirname });
+  python = spawn('C:/Users/aamal/.vscode/.vscode/venv/Scripts/python.exe', ['ai.py'], { 
+    cwd: __dirname,
+    env: process.env
+  });
 
   python.stderr.on('data', (data) => {
     console.error(`Python stderr: ${data}`);
@@ -112,13 +115,25 @@ function initPythonProcess() {
   python.stdout.on('data', (data) => {
     try {
       const output = JSON.parse(data.toString());
+      
+      // Save response to testing_results folder
+      const fs = require('fs');
+      const resultsDir = path.join(__dirname, 'testing_results');
+      if (!fs.existsSync(resultsDir)) {
+        fs.mkdirSync(resultsDir, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.writeFileSync(
+        path.join(resultsDir, `response_${timestamp}.json`),
+        JSON.stringify(output, null, 2)
+      );
+      console.log('[RESPONSE SAVED]', path.join(resultsDir, `response_${timestamp}.json`));
+      
       if (pendingResponse) {
         let responseText = output.response || output;
 
-        // If this is an audio request, parse response and extract code + text from output object
-        if (pendingResponse.isAudio) {
-          responseText = parseGeminiResponse(output);
-        }
+        // Parse response and extract code + text for BOTH audio and text requests
+        responseText = parseGeminiResponse(output);
         
         pendingResponse.resolve(responseText);
         pendingResponse = null;
@@ -165,15 +180,18 @@ const SAFE_COMMANDS_WHITELIST = {
 
 function parseGeminiResponse(responseObj) {
   // responseObj now has both 'text' and 'code' fields from ai.py
-  const text = responseObj.text || responseObj.response || responseObj;
+  const text = responseObj.text || responseObj.response || '';
   const code = responseObj.code || null;
+
+  console.log('[PARSE RESPONSE] text:', text.substring(0, 50) + '...', 'code:', code ? 'YES' : 'NO');
 
   if (code) {
     try {
-      console.log('Executing code:', code);
+      console.log('[EXECUTING CODE]:', code);
       eval(code);
+      console.log('[CODE EXECUTED] Success');
     } catch (err) {
-      console.error('Code execution error:', err);
+      console.error('[CODE EXECUTION ERROR]:', err);
     }
   }
   
