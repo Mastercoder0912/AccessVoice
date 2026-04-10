@@ -4,3 +4,4 @@ node_modules/
 ai_test.py
 test_manual.py
 test_gemini.js
+out/

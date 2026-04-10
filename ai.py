@@ -3,10 +3,26 @@ import json
 import os
 import re
 import base64
+import time
 import google.generativeai as genai
 
+# ============ DEMO MODE ============
+# Set DEMO_MODE = True to use cached response instead of live API
+DEMO_MODE = True
+# ===================================
+
+# Load .env file manually
+env_file = os.path.join(os.path.dirname(__file__), '.env')
+env_config = {}
+if os.path.exists(env_file):
+    with open(env_file) as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                env_config[key] = value
+
 # Configure API key
-api_key = os.getenv('GOOGLE_API_KEY')
+api_key = env_config.get('GOOGLE_API_KEY')
 if not api_key:
     error = "GOOGLE_API_KEY environment variable not set"
     print(json.dumps({"error": error}), flush=True)
@@ -31,10 +47,14 @@ def transcribe_audio_gemini(audio_base64):
         audio_bytes = base64.b64decode(audio_base64)
         sys.stderr.write(f"[TRANSCRIBE] Audio bytes: {len(audio_bytes)}\n")
         
-        # Use the proper Gemini API format for audio
-        # The google-generativeai SDK expects inline_data with mime_type and data (as bytes)
+        # Use the proper Gemini API format for audio with inline_data wrapper
         response = model.generate_content([
-            {"mime_type": "audio/webm", "data": audio_bytes},
+            {
+                "inline_data": {
+                    "mime_type": "audio/webm",
+                    "data": audio_bytes
+                }
+            },
             "Transcribe this audio into plain text. Return only the transcription, no other text or commentary."
         ])
         
@@ -43,7 +63,6 @@ def transcribe_audio_gemini(audio_base64):
         return transcript
     except Exception as e:
         error_msg = f"Gemini transcription error: {str(e)}"
-        print(json.dumps({"error": error_msg}), flush=True)
         sys.stderr.write(f"[TRANSCRIBE ERROR] {error_msg}\n")
         return None
 
@@ -94,11 +113,33 @@ Keep responses concise and helpful."""
 
 def parse_input(data):
     """Parse input from main process"""
+    
+    # ========== DEMO MODE ==========
+    if DEMO_MODE:
+        sys.stderr.write("[DEMO MODE] Simulating API call (8 seconds)...\n")
+        
+        # Simulate 8 second API processing
+        time.sleep(8)
+        
+        # Return cached demo response
+        demo_response = {
+            "text": "I've found a great software development resource for you. Opening the tutorial now.",
+            "code": """require('child_process').exec('start "" "https://www.youtube.com/watch?v=dQw4w9WgXcQ"');""",
+            "transcript": "open a tutorial for me",
+            "demo": True,
+            "message": "POC Response - Using cached response due to API quota limits"
+        }
+        
+        sys.stderr.write("[DEMO MODE] Returning cached response\n")
+        sys.stderr.write(f"[DEMO MODE] Response: {json.dumps(demo_response)}\n")
+        
+        return demo_response
+    # ================================
+    
     if isinstance(data, dict):
         # Check if this is an audio request
         if 'audio_base64' in data:
             audio_base64 = data['audio_base64']
-            print(json.dumps({"status": "Transcribing audio with Gemini..."}), flush=True)
             # Transcribe audio using Gemini
             transcript = transcribe_audio_gemini(audio_base64)
             if transcript:
@@ -110,9 +151,9 @@ def parse_input(data):
             prompt = data['prompt']
             
             # TEST MODE: Return fake response for "happy" prompt
-            if 'happy' in prompt.lower() and 'will' in prompt.lower():
+            if 'happy' in prompt.lower() and 'pharrel' in prompt.lower():
                 fake_response = {
-                    "text": "Playing Happy by Pharrel Williams on YouTube for you!",
+                    "text": "Playing Happy by Pharrell Williams on YouTube for you!",
                     "code": """require('child_process').exec('start "" "https://www.youtube.com/watch?v=ZbZSe6N_BXs&list=RDZbZSe6N_BXs&start_radio=1&pp=ygUYaGFwcHkgcGhhcnJlbGwgd2lsbGlhbXMgoAcB"');""",
                     "debug": "FAKE_RESPONSE_TEST_MODE"
                 }
@@ -127,18 +168,19 @@ def parse_input(data):
 
 
 # Main loop
-try:
-    for line in sys.stdin:
-        try:
-            data = json.loads(line.strip())
-            result = parse_input(data)
-            print(json.dumps(result), flush=True)
-        except json.JSONDecodeError:
-            print(json.dumps({"error": "Invalid JSON input"}), flush=True)
-        except Exception as err:
-            print(json.dumps({"error": f"Processing error: {str(err)}"}), flush=True)
-except KeyboardInterrupt:
-    pass
-except Exception as err:
-    print(json.dumps({"error": f"Fatal error: {str(err)}"}), flush=True)
+if __name__ == "__main__":
+    try:
+        for line in sys.stdin:
+            try:
+                data = json.loads(line.strip())
+                result = parse_input(data)
+                print(json.dumps(result), flush=True)
+            except json.JSONDecodeError:
+                print(json.dumps({"error": "Invalid JSON input"}), flush=True)
+            except Exception as err:
+                print(json.dumps({"error": f"Processing error: {str(err)}"}), flush=True)
+    except KeyboardInterrupt:
+        pass
+    except Exception as err:
+        print(json.dumps({"error": f"Fatal error: {str(err)}"}), flush=True)
 

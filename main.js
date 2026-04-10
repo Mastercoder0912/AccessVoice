@@ -23,6 +23,13 @@ function createWindow() {
     }
   });
 
+  console.log('\n╔═══════════════════════════════════════════════════╗');
+  console.log('║     Accessibility Voice Assistant - POC Demo      ║');
+  console.log('╠═══════════════════════════════════════════════════╣');
+  console.log('║  Mode: DEMO (Using cached responses)              ║');
+  console.log('║  Architecture: Electron ↔ Python (IPC)            ║');
+  console.log('║  Status: Ready for demonstration                  ║');
+  console.log('╚═══════════════════════════════════════════════════╝\n');
 
   mainWindow.loadFile('index.html');
   mainWindow.webContents.openDevTools();
@@ -116,6 +123,23 @@ function initPythonProcess() {
     try {
       const output = JSON.parse(data.toString());
       
+      // ============ DEMO MODE LOGGING ============
+      if (output.demo) {
+        console.log('\n╔════════════════════════════════════════╗');
+        console.log('║        POC DEMONSTRATION MODE          ║');
+        console.log('╚════════════════════════════════════════╝');
+        console.log('\n[POC INFO] ' + output.message);
+        console.log('[POC INFO] API quota limits prevent live testing');
+        console.log('[POC INFO] Showing cached response from working session\n');
+      }
+      // ============================================
+      
+      // Display full response in console
+      console.log('[PYTHON RESPONSE RECEIVED]');
+      console.log('  Text:', output.text);
+      console.log('  Code:', output.code ? output.code.substring(0, 50) + '...' : 'null');
+      console.log('  Full Response:', JSON.stringify(output, null, 2));
+      
       // Save response to testing_results folder
       const fs = require('fs');
       const resultsDir = path.join(__dirname, 'testing_results');
@@ -183,13 +207,16 @@ function parseGeminiResponse(responseObj) {
   const text = responseObj.text || responseObj.response || '';
   const code = responseObj.code || null;
 
-  console.log('[PARSE RESPONSE] text:', text.substring(0, 50) + '...', 'code:', code ? 'YES' : 'NO');
+  console.log('[PARSE RESPONSE]');
+  console.log('  Text:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+  console.log('  Has Code:', code ? 'YES' : 'NO');
 
   if (code) {
     try {
-      console.log('[EXECUTING CODE]:', code);
+      console.log('[EXECUTING CODE]');
+      console.log('  Code:', code);
       eval(code);
-      console.log('[CODE EXECUTED] Success');
+      console.log('[CODE EXECUTED] ✓ Success\n');
     } catch (err) {
       console.error('[CODE EXECUTION ERROR]:', err);
     }
@@ -209,6 +236,11 @@ ipcMain.handle('ask-gemini', async (event, prompt) => {
       reject(new Error('Python process not available'));
       return;
     }
+
+    console.log('\n[REQUEST SENT TO PYTHON]');
+    console.log('  Type: Text Prompt');
+    console.log('  Prompt:', prompt);
+    console.log('  Waiting for response...\n');
 
     pendingResponse = { resolve, reject, isAudio: false };
     try {

@@ -1,0 +1,7 @@
+{
+  "text": "I've found a great software development resource for you. Opening the tutorial now.",
+  "code": "require('child_process').exec('start \"\" \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"');",
+  "transcript": "open a tutorial for me",
+  "demo": true,
+  "message": "POC Response - Using cached response due to API quota limits"
+}
